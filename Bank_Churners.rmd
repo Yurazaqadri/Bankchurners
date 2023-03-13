@@ -1,0 +1,174 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r}
+require(tidymodels)
+require(tidyverse)
+library(tidyverse)
+#install.packages("hablar")
+#library(hablar)
+#install.packages("skimr")
+#library(skimr)
+#require(tidyverse)
+#library(tidyverse)
+#library(gapminder)#
+#install.packages("hablar")
+#library(hablar)
+#library(dplyr)
+#remove.packages(c("ggplot2", "data.table"))
+#install.packages('Rcpp', dependencies = TRUE)
+#install.packages('ggplot2', dependencies = TRUE)
+#install.packages('data.table', dependencies = TRUE)
+library(ggplot2)
+#library(dplyr)
+#install.packages("zoo")
+library(vip)
+#install.packages("writexl")
+#library(writexl)
+#install.packages("see")
+```
+
+## Introduction to tidy models 
+```{r}
+Bank_churners<-read_csv("C:/Users/Lenovo/Downloads/BankChurners.csv")
+glimpse(Bank_churners)
+Bank_churners%>%head()
+summary(Bank_churners)
+#skim(Bank_churners)
+```
+
+```{r}
+hist(Bank_churners$Total_Trans_Ct,prob=TRUE,breaks=100)
+lines(density(Bank_churners$Total_Trans_Ct))
+```
+
+```{r}
+hist(Bank_churners$Total_Revolving_Bal,prob=TRUE,breaks=9)
+lines(density(Bank_churners$Total_Revolving_Bal))
+```
+
+
+```{r}
+ggplot(data = Bank_churners,
+       mapping = aes(x = Customer_Age,color = Card_Category)) +geom_histogram(binwidth = 0.8) +facet_wrap(~ Card_Category) +labs(title =
+"Customer age vs Card category by Attrition Flag",x = "Customer Age",y = "Count") +
+  scale_color_discrete(name = "Card Category") +theme_light() +facet_wrap(~ Card_Category) +facet_grid(. ~ Attrition_Flag)
+```
+
+
+
+
+```{r}
+Bank_churners$Attrition_Flag <- as.numeric(factor(Bank_churners$Attrition_Flag))
+
+set.seed(123)
+
+# Create a split object
+Bankchurners_split <- initial_split(Bank_churners, prop = 0.90, 
+                                   strata = Attrition_Flag)
+
+# Build training data set
+Bankchurners_training <- Bankchurners_split %>% 
+                        training()
+
+# Build testing data set
+Bankchurners_test <- Bankchurners_split %>% 
+                    testing()
+```
+
+```{r}
+lm_model <- linear_reg() %>% 
+            set_engine('lm') %>% # adds lm implementation of linear regression
+            set_mode('regression')
+```
+
+```{r}
+lm_fit <- lm_model %>% 
+          fit(Attrition_Flag ~ . , data=Bankchurners_training)
+# View lm_fit properties
+lm_fit
+```
+
+```{r}
+
+names(lm_fit)
+```
+
+
+
+To print a summary of our model, we can extract `fit` from `lm_fit` and pass it to the `summary()` function. We can explore the estimated coefficients, F-statistics, p-values, residual standard error (also known as RMSE) and R2 value.
+
+However, this feature is best for visually exploring our results on the training data since the results are returned as a data frame.
+
+
+
+```{r}
+summary(lm_fit$fit)
+```
+
+
+
+
+We can use the `plot()` function to obtain diagnostic plots for our trained regression model. Again, we must first extract the `fit` object from `lm_fit` and then pass it into `plot()`. These plots provide a check for the main assumptions of the linear regression model.
+
+
+
+```{r fig.width = 10, fig.height = 10}
+par(mfrow=c(2,2)) # plot all 4 plots in one
+
+plot(lm_fit$fit, 
+     pch = 16,    # optional parameters to make points blue
+     col = '#006EA1')
+
+```
+
+### Tidy Training Results
+
+To obtain the detailed results from our trained linear regression model in a data frame, we can use the `tidy()` and `glance()` functions directly on our trained `parsnip` model, `lm_fit`.
+
+The `tidy()` function takes a linear regression object and returns a data frame of the estimated model coefficients and their associated  F-statistics and p-values.
+
+The `glance()` function will return performance metrics obtained on the training data such as the R2 value (`r.squared`) and the RMSE (`sigma`). 
+
+
+
+```{r}
+# Data frame of estimated coefficients
+tidy(lm_fit)
+```
+
+
+
+```{r}
+# Performance metrics on training data
+glance(lm_fit)
+```
+
+
+
+We can also use the `vip()` function to plot the variable importance for each predictor in our model. The importance value is determined based on the F-statistics and estimate coefficents in our trained model object.
+
+
+
+```{r}
+vip(lm_fit)
+```
+
+
+```{r}
+predict(lm_fit, new_data = Bank_churners)
+```
+```{r}
+ggplot(data = Bank_churners,
+       mapping = aes(x = Total_Trans_Amt, y = Total_Trans_Ct)) +
+  geom_point(color = '#006EA1') +
+  geom_abline(intercept = 0, slope = 1, color = 'orange') +
+  labs(title = 'Linear Regression Results - Total_Trans_Ct & Total_Trans_Amt',
+       x = 'Total_Trans_Amt',
+       y = 'Total_Trans_Ct')
+```
